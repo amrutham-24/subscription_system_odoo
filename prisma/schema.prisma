@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  avatar       String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  memberships  Membership[]
+  sessions     Session[]
+  auditLogs    AuditLog[]
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  currency    String       @default("USD")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  memberships   Membership[]
+  customers     Customer[]
+  products      Product[]
+  plans         Plan[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  payments      Payment[]
+  workflows     Workflow[]
+  auditLogs     AuditLog[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String       @default("STAFF") // ADMIN, STAFF, CUSTOMER
+  createdAt      DateTime     @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Customer {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  phone          String?
+  company        String?
+  status         String       @default("ACTIVE") // ACTIVE, INACTIVE, CHURNED
+  churnRisk      String       @default("LOW")    // LOW, MEDIUM, HIGH
+  balance        Float        @default(0.0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptions  Subscription[]
+  invoices       Invoice[]
+
+  @@index([organizationId, email])
+}
+
+model Product {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plans          Plan[]
+
+  @@index([organizationId])
+}
+
+model Plan {
+  id             String       @id @default(cuid())
+  organizationId String
+  productId      String
+  name           String
+  description    String?
+  price          Float
+  interval       String       @default("MONTHLY") // MONTHLY, YEARLY
+  trialDays      Int          @default(0)
+  features       String?      // JSON string of features
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  subscriptions  Subscription[]
+
+  @@index([organizationId])
+}
+
+model Subscription {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  customerId         String
+  planId             String
+  status             String       @default("ACTIVE") // ACTIVE, TRIALING, PAST_DUE, CANCELED
+  currentPeriodStart DateTime     @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean      @default(false)
+  canceledAt         DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer           Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plan               Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+  invoices           Invoice[]
+
+  @@index([organizationId, status])
+  @@index([customerId])
+}
+
+model Invoice {
+  id             String       @id @default(cuid())
+  organizationId String
+  customerId     String
+  subscriptionId String?
+  number         String       @unique
+  subtotal       Float
+  tax            Float        @default(0.0)
+  discount       Float        @default(0.0)
+  total          Float
+  status         String       @default("OPEN") // DRAFT, OPEN, PAID, PAST_DUE, VOID
+  dueDate        DateTime
+  paidAt         DateTime?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  payments       Payment[]
+
+  @@index([organizationId, status])
+  @@index([customerId])
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  amount         Float
+  currency       String       @default("USD")
+  status         String       @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  method         String       @default("CREDIT_CARD") // CREDIT_CARD, BANK_TRANSFER, CRYPTO
+  transactionRef String?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([invoiceId])
+}
+
+model Workflow {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  triggerEvent   String            // customer.created, subscription.renewed, payment.failed, invoice.overdue
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions       WorkflowVersion[]
+  executions     WorkflowExecution[]
+
+  @@index([organizationId, triggerEvent])
+}
+
+model WorkflowVersion {
+  id          String   @id @default(cuid())
+  workflowId  String
+  version     Int      @default(1)
+  nodesJson   String   // JSON string of React Flow nodes
+  edgesJson   String   // JSON string of React Flow edges
+  createdAt   DateTime @default(now())
+
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+model WorkflowExecution {
+  id           String                  @id @default(cuid())
+  workflowId   String
+  status       String                  @default("RUNNING") // RUNNING, SUCCESS, FAILED
+  triggerEvent String
+  payloadJson  String?                 // Context/Event payload
+  startedAt    DateTime                @default(now())
+  completedAt  DateTime?
+
+  workflow     Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  nodeResults  WorkflowExecutionNode[]
+
+  @@index([workflowId, status])
+}
+
+model WorkflowExecutionNode {
+  id          String            @id @default(cuid())
+  executionId String
+  nodeId      String
+  nodeType    String            // trigger, condition, action
+  status      String            @default("RUNNING") // RUNNING, SUCCESS, FAILED, SKIPPED
+  inputJson   String?
+  outputJson  String?
+  error       String?
+  executedAt  DateTime          @default(now())
+
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadataJson   String?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, action])
+}
