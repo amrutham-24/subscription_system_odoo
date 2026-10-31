@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, Loader2, ArrowRight, ShieldCheck, UserCheck, Briefcase } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,7 +29,11 @@ export default function LoginPage() {
         throw new Error(data.error || "Failed to log in");
       }
 
-      router.push("/dashboard");
+      if (data.user?.role === "CUSTOMER") {
+        router.push("/portal");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -37,8 +41,8 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setEmail("admin@brightloop.io");
+  const fillRole = (roleEmail: string) => {
+    setEmail(roleEmail);
     setPassword("Password123!");
   };
 
@@ -106,16 +110,37 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials Button */}
-          <div className="mt-5 pt-4 border-t border-white/10 text-center">
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 hover:bg-white/10 px-3 py-1.5 text-[11px] text-slate-300 border border-white/10 transition-all cursor-pointer"
-            >
-              <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
-              Fill Demo Credentials (admin@brightloop.io)
-            </button>
+          {/* Quick Demo Role Logins */}
+          <div className="mt-5 pt-4 border-t border-white/10 text-center space-y-2">
+            <p className="text-[11px] font-medium text-slate-400">Quick Demo Logins (Click to Autofill):</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => fillRole("admin@brightloop.io")}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-2 text-[11px] text-indigo-300 border border-indigo-500/20 transition-all cursor-pointer"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                <span>Admin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillRole("staff@brightloop.io")}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-2 text-[11px] text-emerald-300 border border-emerald-500/20 transition-all cursor-pointer"
+              >
+                <Briefcase className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span>Staff</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillRole("customer@acme.com")}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-2 text-[11px] text-amber-300 border border-amber-500/20 transition-all cursor-pointer"
+              >
+                <UserCheck className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span>Customer</span>
+              </button>
+            </div>
           </div>
         </div>
 

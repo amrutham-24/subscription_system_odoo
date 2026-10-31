@@ -23,18 +23,7 @@ async function main() {
   await prisma.organization.deleteMany();
   await prisma.user.deleteMany();
 
-  // 1. Create Demo Admin User
-  const passwordHash = await bcrypt.hash("Password123!", 12);
-  const user = await prisma.user.create({
-    data: {
-      name: "Alex Vance",
-      email: "admin@brightloop.io",
-      passwordHash,
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces",
-    },
-  });
-
-  // 2. Create Organization
+  // 1. Create Organization
   const org = await prisma.organization.create({
     data: {
       name: "Brightloop Technologies",
@@ -43,16 +32,61 @@ async function main() {
     },
   });
 
-  // 3. Create Admin Membership
+  // 2. Create Passwords & Users
+  const passwordHash = await bcrypt.hash("Password123!", 12);
+  
+  // Admin User
+  const adminUser = await prisma.user.create({
+    data: {
+      name: "Alex Vance (Admin)",
+      email: "admin@brightloop.io",
+      passwordHash,
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces",
+    },
+  });
   await prisma.membership.create({
     data: {
-      userId: user.id,
+      userId: adminUser.id,
       organizationId: org.id,
       role: "ADMIN",
     },
   });
 
-  // 4. Create Products & Plans
+  // Staff User
+  const staffUser = await prisma.user.create({
+    data: {
+      name: "Sarah Jenkins (Staff)",
+      email: "staff@brightloop.io",
+      passwordHash,
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces",
+    },
+  });
+  await prisma.membership.create({
+    data: {
+      userId: staffUser.id,
+      organizationId: org.id,
+      role: "STAFF",
+    },
+  });
+
+  // Customer User (Acme Corp Client)
+  const customerUser = await prisma.user.create({
+    data: {
+      name: "David Miller (Customer)",
+      email: "customer@acme.com",
+      passwordHash,
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces",
+    },
+  });
+  await prisma.membership.create({
+    data: {
+      userId: customerUser.id,
+      organizationId: org.id,
+      role: "CUSTOMER",
+    },
+  });
+
+  // 3. Create Products & Plans
   const saasProduct = await prisma.product.create({
     data: {
       organizationId: org.id,
@@ -113,9 +147,9 @@ async function main() {
     },
   });
 
-  // 5. Create Customers
+  // 4. Create Customers
   const customerData = [
-    { name: "Acme Corporation", email: "billing@acme.com", company: "Acme Corp", churnRisk: "LOW", status: "ACTIVE" },
+    { name: "Acme Corporation", email: "customer@acme.com", company: "Acme Corp", churnRisk: "LOW", status: "ACTIVE" },
     { name: "TechFlow Labs", email: "finance@techflow.io", company: "TechFlow", churnRisk: "LOW", status: "ACTIVE" },
     { name: "Supabase Inc", email: "ops@supabase.io", company: "Supabase", churnRisk: "LOW", status: "ACTIVE" },
     { name: "Linear Systems", email: "accounts@linear.app", company: "Linear", churnRisk: "MEDIUM", status: "ACTIVE" },
@@ -140,7 +174,7 @@ async function main() {
     createdCustomers.push(cust);
   }
 
-  // 6. Create Subscriptions & Invoices
+  // 5. Create Subscriptions & Invoices
   const now = new Date();
   const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const oneYearLater = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
@@ -170,6 +204,23 @@ async function main() {
       status: "PAID",
       dueDate: now,
       paidAt: now,
+    },
+  });
+
+  // Acme second open invoice
+  await prisma.invoice.create({
+    data: {
+      organizationId: org.id,
+      customerId: createdCustomers[0].id,
+      subscriptionId: sub1.id,
+      number: "INV-2026-005",
+      subtotal: 299.0,
+      tax: 23.92,
+      discount: 0.0,
+      total: 322.92,
+      status: "OPEN",
+      dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+      notes: "Monthly enterprise add-on: 5 Dedicated seats",
     },
   });
 
@@ -229,7 +280,7 @@ async function main() {
     },
   });
 
-  // Retool -> Enterprise (PAST DUE - Great for automation demos!)
+  // Retool -> Enterprise (PAST DUE)
   const subRetool = await prisma.subscription.create({
     data: {
       organizationId: org.id,
@@ -257,7 +308,7 @@ async function main() {
     },
   });
 
-  // 7. Create Pre-built Workflows with React Flow Nodes & Edges
+  // 6. Create Pre-built Workflows
   const dunningNodes = [
     {
       id: "node-trigger",
@@ -346,7 +397,6 @@ async function main() {
     },
   });
 
-  // Create sample execution run
   const exec1 = await prisma.workflowExecution.create({
     data: {
       workflowId: dunningWorkflow.id,
@@ -372,7 +422,9 @@ async function main() {
   });
 
   console.log("Database seeded successfully!");
-  console.log("Admin credentials: admin@brightloop.io / Password123!");
+  console.log("Admin: admin@brightloop.io / Password123!");
+  console.log("Staff: staff@brightloop.io / Password123!");
+  console.log("Customer: customer@acme.com / Password123!");
 }
 
 main()

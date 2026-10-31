@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles, ArrowRight, Zap, ShieldCheck, Repeat, TrendingUp } from "lucide-react";
+import { Sparkles, ArrowRight, Zap, ShieldCheck, Repeat, TrendingUp, UserCheck } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -18,7 +18,13 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/portal"
+            className="text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20"
+          >
+            Customer Portal
+          </Link>
           <Link
             href="/login"
             className="text-xs font-semibold text-slate-300 hover:text-white transition-colors"
@@ -29,7 +35,7 @@ export default function HomePage() {
             href="/dashboard"
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-violet-500 hover:to-indigo-500 transition-all cursor-pointer"
           >
-            Launch Demo App <ArrowRight className="h-4 w-4" />
+            Launch Admin App <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </header>
@@ -54,7 +60,14 @@ export default function HomePage() {
             href="/dashboard"
             className="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3.5 text-sm font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all cursor-pointer"
           >
-            Open Executive Dashboard <ArrowRight className="h-4 w-4" />
+            Open Admin Dashboard <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/portal"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-6 py-3.5 text-sm font-semibold text-amber-300 transition-all cursor-pointer"
+          >
+            <UserCheck className="h-4 w-4 text-amber-400" />
+            Customer Self-Service Portal
           </Link>
           <Link
             href="/automations"
